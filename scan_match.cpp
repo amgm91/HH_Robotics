@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <algorithm>
 #include <cmath>
+#include <fstream>
 #include "global.h"
 
 #include <vector>
@@ -40,13 +41,13 @@ double dda;
 
 
 // Initial position 
-//double Rx = 200;
-//double Ry = 160;
-//double Ra = 90;
 
 double Rx;
 double Ry;
 double Ra;
+
+// open file to write readings
+ofstream cox_file;
 
 
 void itializeMatrix()
@@ -305,13 +306,17 @@ void cox(void){
 			x_cox = Rx + ddx;
 			y_cox = Ry + ddy;
 			a_cox = Ra + dda;
-			//cout<< "X: "<< x_cox << endl;
-			//cout<< "Y: "<< y_cox << endl; 
+			cox_file << Local_Time() << " " << x_cox << " " << y_cox << " " << a_cox << " ";
+			cox_file << c_cox(0,0) << " " << c_cox(0,1) << " " << c_cox(0,2) << " ";
+			cox_file << c_cox(1,0) << " " << c_cox(1,1) << " " << c_cox(1,2) << " ";
+			cox_file << c_cox(2,0) << " " << c_cox(2,1) << " " << c_cox(2,2) << " " << " \n";
+			cout<< "X: "<< x_cox << endl;
+			cout<< "Y: "<< y_cox << endl; 
 			//cout<< "Ra degree: "<<(Ra * 180 / M_PI) << endl; 
 			//cout<< "Ra radians: "<< Ra << endl; 
 			//cout<< "dda degrees: "<< (dda * 180 / M_PI) << endl; 
 			//cout<< "dda radians: "<< (dda) << endl; 
-			//cout<< "A degress: "<< ((Ra + dda) * 180 / M_PI) << endl;
+			cout<< "A degress: "<< ((Ra + dda) * 180 / M_PI) << endl;
 			//cout<< "A radians: "<< ((Ra + dda)) << endl;
 			break;
 		}
@@ -341,6 +346,18 @@ void cox(void){
 
 
 void *Scan_Match(void *){
+	
+	cox_file.open("scan_match_readings.txt", ios::trunc);
+	
+	
+	if(!cox_file.is_open())
+	{
+		cout << "Scan match readings txt file failed to open" << endl;
+		//return;
+	}
+	  
+	
+	cox_file << "Time[s] X[mm] Y[mm] a[rad] c11 c12 c13 c21 c22 c23 c31 c32 c33 \n"; 
 	
 	while(1){
 		if(Array_full_flag == 1)

@@ -22,18 +22,20 @@ int main(int argc, char **argv){
 	int p1,p2,p3,p4;
 	 
    	p1 = pthread_create(&thread1, NULL, Pos_Controller, NULL);
-	p2 = pthread_create(&thread2, NULL, Camera_Client, NULL);
+	//p2 = pthread_create(&thread2, NULL, Camera_Client, NULL);
    	p3 = pthread_create(&thread3, NULL, Scan_Match, NULL);
  	p4 = pthread_create(&thread4, NULL, Lidar_Server, NULL);
 	
-	//if(p1 | p2 | p4 |p3)
-	 // cout << "threads missing";
+	if(p1 | p2 | p4 |p3)
+		cout << "threads missing";
    
    Robot_State = Start; 
   
-   //double Start_Time = Local_Time();
+   double Start_Time = Local_Time();
    
   while(1){
+		
+		//cout << "Time: " <<  Local_Time()<< endl;
 		switch(Robot_State){
 		case Start:
 		break;

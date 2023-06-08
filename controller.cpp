@@ -1,6 +1,7 @@
 #include <unistd.h>
 #include <iostream>
 #include <stdio.h>
+#include <fstream>
 //include "odometry.h"
 #include "controller.h"
 #include <sys/time.h>   // struct itimerval
@@ -21,7 +22,7 @@
 #include "spi_com.h"
 #include "scan_match.h"
 
-#define SPEED 3000	
+#define SPEED 1000	
 
 
 using namespace std;
@@ -30,7 +31,7 @@ using namespace Eigen;
 MotorDataType MotorData;
 
 // The Gearbox ratio is 32
-// The wheel radius is 14 mm
+// The wheel radius is 15 mm
 int got_box = 0;
 int first_run_flag = 1;
 int wheelbase = 130;
@@ -80,6 +81,10 @@ double E_left_old;
 double E_right;
 double E_left;
 
+// initilize files to write location data to
+//ofstream odo_file;
+ofstream kalman_file;
+
 int state = 1;
 /*
  *  1 --> Start
@@ -92,61 +97,30 @@ int state = 1;
  * 
 */
 void odometry(void){
-	/*
-	if(first_run_flag == 1)
-	{
-		first_run_flag = 0;
-		x_old = x_initial;
-		y_old = y_initial;
-		a_old = a_initial;
-		p_old = p_initial;
-		//E_right_old = MotorData.Encoder_M1;
-		//E_left_old = MotorData.Encoder_M2;
-		
-	}
-	*/
 	
 	// Read current encoder values
-	//x_old = x;
-	//y_old = y;
-	//a_old = a;
-	//p_old = p;
-	//delay(50);
 	E_right = MotorData.Encoder_M1;
 	E_left = MotorData.Encoder_M2;
 	
-	//cout << " E_old: "<< E_left_old << endl;
-	//cout << " E_new: "<< static_cast<int>(E_left) << endl;
-	
-	//cout << "encoder right: " << E_right << endl;
-	//cout << "encoder right old: " << E_right_old << endl;
-	//cout << "mm/Pulse: " << mm_per_pulse << endl;
-	//cout << "encoder left: " << E_left << endl;
-	//cout << "encoder left old: " << E_left_old << endl;
 	
 	// Transform pulses to mm
 	double dDr = (E_right - E_right_old) * mm_per_pulse;
 	double dDl = (E_left - E_left_old) * mm_per_pulse;
 	
-	//cout << "E_new" <<  E_left << " E_old: "<< E_left_old << endl;
-	
+	// save the current encoder readings as old readings to be used in the next iteration
 	E_right_old = E_right;
 	E_left_old = E_left;
 	
+	// Make sure that the change in distance on both sides is not big because of the reset in encoder values
 	if(abs(dDr) > 20 || abs(dDl) > 20)
 	{
 		return;
 	}
 	
-	//cout << "dDr: " << dDr << endl;
-	//cout << "dDl: " << dDl << endl;
 	
 	// Calculate change of relative movements
 	double dD = (dDr + dDl) / 2;
-	double dA = (dDr - dDl) / wheelbase;
-	
-	//cout << "dD: " << dD << endl;
-	//cout << "dA: " << dA << endl;
+	double dA = (dDr - dDl) / wheelbase;	
 	
 	// change in X and Y
 	double dx = dD * cos(a_old + dA/2);
@@ -156,7 +130,6 @@ void odometry(void){
 	
 	x = x_old + dx;
 	y = y_old + dy;
-	//a = fmod(a_old + dA, 2*M_PI);
 	a = (a_old + dA);
 	
 	// Predict the uncertainty in the state variables
@@ -165,8 +138,6 @@ void odometry(void){
 	Axya << 1, 0, -dD * sin(a_old + dA/2),
 			0, 1, dD * cos(a_old + dA/2),
 			0, 0, 1;
-	
-	//MatrixXd Cxya = p_old;
 	
 	MatrixXd Jrl(3,2);
 	Jrl<< 0.5*cos(a_old+(dA/2))-((dD/(2*wheelbase))*sin(a+(dA/2))), 0.5*cos(a+(dA/2))+((dD/(2*wheelbase))*sin(a+(dA/2))),
@@ -197,6 +168,10 @@ void odometry(void){
 	//cout << "A: " << (a * 180 / M_PI)  << endl;
 	//cout << "P:  "  << p << endl;
 	
+	//odo_file << Local_Time() << " " << x << " " << y << " " << a << " ";
+	//odo_file << p(0,0) << " " << p(0,1) << " " << p(0,2) << " ";
+	//odo_file << p(1,0) << " " << p(1,1) << " " << p(1,2) << " ";
+	//odo_file << p(2,0) << " " << p(2,1) << " " << p(2,2) << " " << " \n";
 	
 	// save the current as the old point for the next iteration
 	x_old = x;
@@ -210,6 +185,7 @@ void Kalman(void){
 	if(cox_complete == 1)
 	{
 		//cout<<"enter Kalman"<<endl;
+		
 		// Covariance Matrices
 		MatrixXd C_cox(3,3);
 		MatrixXd C_odo(3,3);
@@ -259,8 +235,6 @@ void Kalman(void){
 		Eigen::MatrixXd new_C;
 		new_C = (C_cox.inverse() + C_odo.inverse()).inverse();
 		
-		//cout << "new_x Rows: " << new_X.rows();
-		//cout << "new_x cols: " << new_X.cols();
 		
 		// Store current corrected position and covariance matrix 
 		x = new_X(0, 0);
@@ -268,6 +242,13 @@ void Kalman(void){
 		a = new_X(2, 0);
 		
 		p = new_C;
+		cout << "Started writing to kalman"<< endl;
+		kalman_file << Local_Time() << " " << new_X(0, 0) << " " << new_X(1, 0) << " " << new_X(2, 0) << " ";
+		kalman_file << new_C(0,0) << " " << new_C(0,1) << " " << new_C(0,2) << " ";
+		kalman_file << new_C(1,0) << " " << new_C(1,1) << " " << new_C(1,2) << " ";
+		kalman_file << new_C(2,0) << " " << new_C(2,1) << " " << new_C(2,2) << " " << " \n";
+		
+		cout << "ended writing to kalman"<< endl;
 	
 	}
 }
@@ -321,7 +302,6 @@ void forward()
 {
 	MotorData.Set_Speed_M1 = SPEED;
 	MotorData.Set_Speed_M2 = SPEED;
-	//MotorData.Set_Speed_M2 = 0;
 }
 
 void backward()
@@ -354,7 +334,12 @@ void stop()
 
 void *Pos_Controller(void* ){
 
+	// initialize location with predetrmined initial on the arena
 	p_initial << 1,0,0,0,1,0,0,0,pow(1*M_PI/180, 2);
+	x_old = x_initial;
+	y_old = y_initial;
+	a_old = a_initial;
+	
 	wiringPiSetup();
 	//wiringPiSPISetup(1, 4000000);
 	wiringPiSPISetup(1, 1000000);
@@ -368,35 +353,39 @@ void *Pos_Controller(void* ){
 		delay(50);
 	}
 	
-	//E_right_old = MotorData.Encoder_M1;
-	//E_left_old = MotorData.Encoder_M2;
 	
-	x_old = x_initial;
-	y_old = y_initial;
-	a_old = a_initial;
 	
 	E_right_old = MotorData.Encoder_M1;
 	E_left_old = MotorData.Encoder_M2;
 	
-	//dr_old = MotorData.Encoder_M1;
-	//dl_old = MotorData.Encoder_M2;
+	//odo_file.open("odometery_readings.txt", ios::trunc);
+	kalman_file.open("kalman_readings.txt", ios::trunc);
+	/*
+	if(!odo_file.is_open())
+	{
+		cout << "Odometry readings txt file failed to open" << endl;
+		//return;
+	}
+	  */
+	if(!kalman_file.is_open())
+	{
+		cout << "kalman readings txt file failed to open" << endl;
+		//return;
+	}  
 	
-	//MotorData.Set_Speed_M1=1000;
-	//MotorData.Set_Speed_M2=1000;
-	
-	//forward();
-	//backward();
-	//left();
-	//right();   
+	//odo_file << "Time[s] X[mm] Y[mm] a[rad] c11 c12 c13 c21 c22 c23 c31 c32 c33 \n"; 
+	kalman_file << "Time[s] X[mm] Y[mm] a[rad] c11 c12 c13 c21 c22 c23 c31 c32 c33 \n"; 
+	  
 	
 	while(1){
 		
+		//cout << "Time: " <<  Local_Time()<< endl;
 		//forward();
 		//delay(50);
 		//Send_Read_Motor_Data(&MotorData);
 		//E_left = MotorData.Encoder_M2;
 		//cout << " E_new: "<< static_cast<int>(E_left) << endl;
-		
+		/*
 		switch(state)
 		{
 			case 1:
@@ -482,34 +471,27 @@ void *Pos_Controller(void* ){
 		Send_Read_Motor_Data(&MotorData);
 		odometry();
 		Kalman();
-		/*
-		if(Counter_walk < 200 && state == 1){  // Todo! select time
+		*/
+		
+		if(Counter_walk < 200)
+		{  
 			Counter_walk++;
-			
-			//odometry();
-			//Kalman();
-			//Position_Feedback_Controller();
-			//Invers_Kinematic();
-			//cout << "Encoder M1: "<< MotorData.Encoder_M1 << endl;
-			//cout << "Encoder M2: "<< MotorData.Encoder_M2 << endl;
+			forward();
 			delay(50);
-			//std::this_thread::sleep_for(std::chrono::milliseconds(50));
 			Send_Read_Motor_Data(&MotorData);
 			odometry();
 			Kalman();
-			//delay(50);
-			//cout << "E_new" <<  E_left << " E_old: "<< E_left_old << endl;
+			
 			//cout << "X: " << x << endl;
 			//cout << "Y: " << y << endl;
 			//cout << "A: " << (a * 180 / M_PI)  << endl;
-			//delay(50);
 		}
 		else 
 		{
 			stop();
 			Send_Read_Motor_Data(&MotorData);
 			delay(50);
-		}*/		
+		}	
 	}
 	
 }
