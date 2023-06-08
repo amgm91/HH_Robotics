@@ -47,15 +47,11 @@ double Ry;
 double Ra;
 
 // open file to write readings
-ofstream cox_file;
+//ofstream cox_file;
 
 
 void itializeMatrix()
 {
-	
-	// The Lines need to changed to the arena dimentions 
-	// instead of the box dimentions
-	// and ui recalculated 
 	
 	// this matrix intilizes the lines and unit vector matrices
 	lines<<0,0,2420,0,
@@ -81,6 +77,7 @@ void cox(void){
 	ddy = 0;
 	dda = 0;
 	
+	// initial values for testing
 	//Rx = 1200;
 	//Ry = 380;
 	//Ra = (90 * M_PI) / 180;
@@ -306,17 +303,17 @@ void cox(void){
 			x_cox = Rx + ddx;
 			y_cox = Ry + ddy;
 			a_cox = Ra + dda;
-			cox_file << Local_Time() << " " << x_cox << " " << y_cox << " " << a_cox << " ";
-			cox_file << c_cox(0,0) << " " << c_cox(0,1) << " " << c_cox(0,2) << " ";
-			cox_file << c_cox(1,0) << " " << c_cox(1,1) << " " << c_cox(1,2) << " ";
-			cox_file << c_cox(2,0) << " " << c_cox(2,1) << " " << c_cox(2,2) << " " << " \n";
-			cout<< "X: "<< x_cox << endl;
-			cout<< "Y: "<< y_cox << endl; 
+			//cox_file << Local_Time() << " " << x_cox << " " << y_cox << " " << a_cox << " ";
+			//cox_file << c_cox(0,0) << " " << c_cox(0,1) << " " << c_cox(0,2) << " ";
+			//cox_file << c_cox(1,0) << " " << c_cox(1,1) << " " << c_cox(1,2) << " ";
+			//cox_file << c_cox(2,0) << " " << c_cox(2,1) << " " << c_cox(2,2) << " " << " \n";
+			//cout<< "X: "<< x_cox << endl;
+			//cout<< "Y: "<< y_cox << endl; 
 			//cout<< "Ra degree: "<<(Ra * 180 / M_PI) << endl; 
 			//cout<< "Ra radians: "<< Ra << endl; 
 			//cout<< "dda degrees: "<< (dda * 180 / M_PI) << endl; 
 			//cout<< "dda radians: "<< (dda) << endl; 
-			cout<< "A degress: "<< ((Ra + dda) * 180 / M_PI) << endl;
+			//cout<< "A degress: "<< ((Ra + dda) * 180 / M_PI) << endl;
 			//cout<< "A radians: "<< ((Ra + dda)) << endl;
 			break;
 		}
@@ -346,7 +343,7 @@ void cox(void){
 
 
 void *Scan_Match(void *){
-	
+	/*
 	cox_file.open("scan_match_readings.txt", ios::trunc);
 	
 	
@@ -358,7 +355,7 @@ void *Scan_Match(void *){
 	  
 	
 	cox_file << "Time[s] X[mm] Y[mm] a[rad] c11 c12 c13 c21 c22 c23 c31 c32 c33 \n"; 
-	
+	*/
 	while(1){
 		if(Array_full_flag == 1)
 		cox();

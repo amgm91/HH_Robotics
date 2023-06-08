@@ -22,7 +22,7 @@
 #include "spi_com.h"
 #include "scan_match.h"
 
-#define SPEED 1000	
+#define SPEED 3000	
 
 
 using namespace std;
@@ -184,7 +184,7 @@ void Kalman(void){
 	
 	if(cox_complete == 1)
 	{
-		//cout<<"enter Kalman"<<endl;
+		cout<<"enter Kalman"<<endl;
 		
 		// Covariance Matrices
 		MatrixXd C_cox(3,3);
@@ -207,21 +207,25 @@ void Kalman(void){
 		if(abs((C_cox + C_odo).determinant()) != 0)
 		{
 			// the matrix is invertible;
+			cout<<"Matrix is invertable"<<endl;
 			return;
 		}
 		/*
 		if(abs((C_cox).determinant()) <= 0)
 		{
 			// the matrix is invertible;
+			cout<<"cox Matrix is invertable"<<endl;
 			return;
 		}
 		
 		if(abs((C_odo).determinant()) <= 0)
 		{
 			// the matrix is invertible;
+			cout<<"odo Matrix is invertable"<<endl;
 			return;
 		}
 		*/
+		cout<<"Start Calculations"<<endl;
 		// Calculate new Positions 	
 		MatrixXd new_X_odo;
 		new_X_odo = C_cox * (C_cox + C_odo).inverse() * X_odo;
@@ -234,7 +238,7 @@ void Kalman(void){
 		// Calculate New C
 		Eigen::MatrixXd new_C;
 		new_C = (C_cox.inverse() + C_odo.inverse()).inverse();
-		
+		cout<<"finish calculation"<<endl;
 		
 		// Store current corrected position and covariance matrix 
 		x = new_X(0, 0);
@@ -242,13 +246,17 @@ void Kalman(void){
 		a = new_X(2, 0);
 		
 		p = new_C;
-		cout << "Started writing to kalman"<< endl;
-		kalman_file << Local_Time() << " " << new_X(0, 0) << " " << new_X(1, 0) << " " << new_X(2, 0) << " ";
-		kalman_file << new_C(0,0) << " " << new_C(0,1) << " " << new_C(0,2) << " ";
-		kalman_file << new_C(1,0) << " " << new_C(1,1) << " " << new_C(1,2) << " ";
-		kalman_file << new_C(2,0) << " " << new_C(2,1) << " " << new_C(2,2) << " " << " \n";
 		
-		cout << "ended writing to kalman"<< endl;
+		cout << "X: " << x << endl;
+		cout << "Y: " << y << endl;
+		cout << "A: " << ((a) * 180 / M_PI)<< endl;
+		//cout << "Started writing to kalman"<< endl;
+		//kalman_file << Local_Time() << " " << new_X(0, 0) << " " << new_X(1, 0) << " " << new_X(2, 0) << " ";
+		//kalman_file << new_C(0,0) << " " << new_C(0,1) << " " << new_C(0,2) << " ";
+		//kalman_file << new_C(1,0) << " " << new_C(1,1) << " " << new_C(1,2) << " ";
+		//kalman_file << new_C(2,0) << " " << new_C(2,1) << " " << new_C(2,2) << " " << " \n";
+		
+		//cout << "ended writing to kalman"<< endl;
 	
 	}
 }
@@ -359,22 +367,22 @@ void *Pos_Controller(void* ){
 	E_left_old = MotorData.Encoder_M2;
 	
 	//odo_file.open("odometery_readings.txt", ios::trunc);
-	kalman_file.open("kalman_readings.txt", ios::trunc);
+	//kalman_file.open("kalman_readings.txt", ios::trunc);
 	/*
 	if(!odo_file.is_open())
 	{
 		cout << "Odometry readings txt file failed to open" << endl;
 		//return;
 	}
-	  */
+	  
 	if(!kalman_file.is_open())
 	{
 		cout << "kalman readings txt file failed to open" << endl;
 		//return;
 	}  
-	
+	*/
 	//odo_file << "Time[s] X[mm] Y[mm] a[rad] c11 c12 c13 c21 c22 c23 c31 c32 c33 \n"; 
-	kalman_file << "Time[s] X[mm] Y[mm] a[rad] c11 c12 c13 c21 c22 c23 c31 c32 c33 \n"; 
+	//kalman_file << "Time[s] X[mm] Y[mm] a[rad] c11 c12 c13 c21 c22 c23 c31 c32 c33 \n"; 
 	  
 	
 	while(1){
@@ -473,7 +481,7 @@ void *Pos_Controller(void* ){
 		Kalman();
 		*/
 		
-		if(Counter_walk < 200)
+		if(Counter_walk < 500)
 		{  
 			Counter_walk++;
 			forward();
