@@ -336,17 +336,17 @@ void backward()
 
 }
 
-void left()
+void left(int speed)
 {
-	MotorData.Set_Speed_M1 = 500;
-	MotorData.Set_Speed_M2 = -500;
+	MotorData.Set_Speed_M1 = speed;
+	MotorData.Set_Speed_M2 = -speed;
 
 }
 
-void right()
+void right(int speed)
 {
-	MotorData.Set_Speed_M1 = -500;
-	MotorData.Set_Speed_M2 = 500;
+	MotorData.Set_Speed_M1 = -speed;
+	MotorData.Set_Speed_M2 = speed;
 
 }
 
@@ -433,15 +433,36 @@ void *Pos_Controller(void* ){
 				Counter_walk = 0;
 			}
 			break;
-			case 2: // search for box
-			if(d < 0)
-			{left();}
-			if(d > 0)
-			{right();}
-			if(abs(d) < 70)
-			{state = 3;}
+			case 2:
+			if(box_N == 1)
+			{
+				state = 3;
+			}
+			else
+			{
+				state = 4;
+			}
 			break;
-			case 3: // move toward box
+			case 3: // Turn toward the box if box = 1
+			if(d < 0)
+			{left(500);}
+			if(d > 0)
+			{right(500);}
+			if(abs(d) < 70)
+			{state = 5;}
+			break;
+			case 4: // turn away from box if box = 0
+			if(d > 0)
+			{left(700);}
+			if(d < 0)
+			{right(700);}
+			if(abs(d) > 120)
+			{
+				//stop();
+				state = 2;
+			}
+			break;
+			case 5: // move toward box
 			if(box_area < 50000 && abs(d) > 0)
 			{
 				forward();
@@ -455,9 +476,35 @@ void *Pos_Controller(void* ){
 			}
 			else 
 			{
-				stop();
+				//stop();
+				Counter_walk++;
+				if(Counter_walk > 60)
+				{
+					Counter_walk = 0;
+					stop();
+					if(got_box == 0) // got the first box
+					{
+						stop();
+						got_box = 1;
+						state = 6;
+					}
+					else
+					{
+						stop();
+					}
+				}
 			}
 			break;
+			case 6: // Search for second box 
+			if (abs(d) == 0)
+			{
+				right(800);
+			}
+			else
+			{
+				state = 2;
+			}
+			
 		}
 		cout << "d: " << d << endl;
 		cout << "State: " << state << endl;
