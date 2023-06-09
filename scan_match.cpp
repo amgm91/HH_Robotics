@@ -47,7 +47,7 @@ double Ry;
 double Ra;
 
 // open file to write readings
-//ofstream cox_file;
+ofstream cox_file("scan_match_readings.txt");
 
 
 void itializeMatrix()
@@ -303,10 +303,11 @@ void cox(void){
 			x_cox = Rx + ddx;
 			y_cox = Ry + ddy;
 			a_cox = Ra + dda;
-			//cox_file << Local_Time() << " " << x_cox << " " << y_cox << " " << a_cox << " ";
-			//cox_file << c_cox(0,0) << " " << c_cox(0,1) << " " << c_cox(0,2) << " ";
-			//cox_file << c_cox(1,0) << " " << c_cox(1,1) << " " << c_cox(1,2) << " ";
-			//cox_file << c_cox(2,0) << " " << c_cox(2,1) << " " << c_cox(2,2) << " " << " \n";
+			cox_file << Local_Time() << " " << x_cox << " " << y_cox << " " << a_cox << " ";
+			cox_file << c_cox(0,0) << " " << c_cox(0,1) << " " << c_cox(0,2) << " ";
+			cox_file << c_cox(1,0) << " " << c_cox(1,1) << " " << c_cox(1,2) << " ";
+			cox_file << c_cox(2,0) << " " << c_cox(2,1) << " " << c_cox(2,2) << " " << " \n";
+			cox_file.flush();
 			//cout<< "X: "<< x_cox << endl;
 			//cout<< "Y: "<< y_cox << endl; 
 			//cout<< "Ra degree: "<<(Ra * 180 / M_PI) << endl; 
@@ -343,19 +344,24 @@ void cox(void){
 
 
 void *Scan_Match(void *){
-	/*
-	cox_file.open("scan_match_readings.txt", ios::trunc);
 	
+	
+	cox_file.close();
 	
 	if(!cox_file.is_open())
 	{
-		cout << "Scan match readings txt file failed to open" << endl;
+		cox_file.open("scan_match_readings.txt", ios::out |ios::trunc);
+		cout << "Cox File opened" << endl;
 		//return;
 	}
+	else
+	{
+		cout<< "Cox file already open" <<endl;
+	}	
 	  
 	
 	cox_file << "Time[s] X[mm] Y[mm] a[rad] c11 c12 c13 c21 c22 c23 c31 c32 c33 \n"; 
-	*/
+	cox_file.flush();
 	while(1){
 		if(Array_full_flag == 1)
 		cox();

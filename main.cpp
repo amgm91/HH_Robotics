@@ -22,7 +22,7 @@ int main(int argc, char **argv){
 	int p1,p2,p3,p4;
 	 
    	p1 = pthread_create(&thread1, NULL, Pos_Controller, NULL);
-	//p2 = pthread_create(&thread2, NULL, Camera_Client, NULL);
+	p2 = pthread_create(&thread2, NULL, Camera_Client, NULL);
    	p3 = pthread_create(&thread3, NULL, Scan_Match, NULL);
  	p4 = pthread_create(&thread4, NULL, Lidar_Server, NULL);
 	

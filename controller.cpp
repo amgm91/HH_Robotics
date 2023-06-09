@@ -28,6 +28,7 @@
 using namespace std;
 using namespace Eigen;
 
+
 MotorDataType MotorData;
 
 // The Gearbox ratio is 32
@@ -82,8 +83,8 @@ double E_right;
 double E_left;
 
 // initilize files to write location data to
-//ofstream odo_file;
-ofstream kalman_file;
+ofstream odo_file("odometery_readings.txt");
+ofstream kalman_file("kalman_readings.txt");
 
 int state = 1;
 /*
@@ -168,10 +169,11 @@ void odometry(void){
 	//cout << "A: " << (a * 180 / M_PI)  << endl;
 	//cout << "P:  "  << p << endl;
 	
-	//odo_file << Local_Time() << " " << x << " " << y << " " << a << " ";
-	//odo_file << p(0,0) << " " << p(0,1) << " " << p(0,2) << " ";
-	//odo_file << p(1,0) << " " << p(1,1) << " " << p(1,2) << " ";
-	//odo_file << p(2,0) << " " << p(2,1) << " " << p(2,2) << " " << " \n";
+	odo_file << Local_Time() << " " << x << " " << y << " " << a << " ";
+	odo_file << p(0,0) << " " << p(0,1) << " " << p(0,2) << " ";
+	odo_file << p(1,0) << " " << p(1,1) << " " << p(1,2) << " ";
+	odo_file << p(2,0) << " " << p(2,1) << " " << p(2,2) << " " << " \n";
+	odo_file.flush();
 	
 	// save the current as the old point for the next iteration
 	x_old = x;
@@ -184,7 +186,7 @@ void Kalman(void){
 	
 	if(cox_complete == 1)
 	{
-		cout<<"enter Kalman"<<endl;
+		//cout<<"enter Kalman"<<endl;
 		
 		// Covariance Matrices
 		MatrixXd C_cox(3,3);
@@ -202,30 +204,42 @@ void Kalman(void){
 		X_odo << x, y, a;
 		X_cox << x_cox, y_cox, a_cox;
 		
+		//cout << "c_Cox: " << C_cox << endl;
+		//cout << "c_odo: " << C_odo << endl;
+		//cout << "c_Cox + C_odo" << C_cox + C_odo << endl;
+		//cout << "Det:" << (C_cox + C_odo).determinant()<<endl;
+		
 		// Making sure that C_cox + C_odo is invertible 
 		
-		if(abs((C_cox + C_odo).determinant()) != 0)
+		if(abs((C_cox + C_odo).determinant()) == 0)
 		{
 			// the matrix is invertible;
-			cout<<"Matrix is invertable"<<endl;
-			return;
-		}
-		/*
-		if(abs((C_cox).determinant()) <= 0)
-		{
-			// the matrix is invertible;
-			cout<<"cox Matrix is invertable"<<endl;
+			cout<<"Matrix is not invertable"<<endl;
 			return;
 		}
 		
-		if(abs((C_odo).determinant()) <= 0)
+		
+		double c_cox_det = C_cox.determinant();
+		double c_odo_det = C_odo.determinant();
+		
+		//cout << "Inverse calculation c_cox: " << c_cox_det << endl;
+		//cout << "Inverse calculation c_odo: " << c_odo_det << endl;
+		
+		//cout << "=!= odo " << (c_odo_det != c_odo_det) << endl;
+		//cout << "=!= cox " << (c_cox_det != c_cox_det) << endl;
+		
+		if(c_cox_det != c_cox_det)
 		{
-			// the matrix is invertible;
-			cout<<"odo Matrix is invertable"<<endl;
 			return;
 		}
-		*/
-		cout<<"Start Calculations"<<endl;
+		
+		if(c_odo_det != c_odo_det)
+		{
+			return;
+		}
+		
+		
+		//cout<<"Start Calculations"<<endl;
 		// Calculate new Positions 	
 		MatrixXd new_X_odo;
 		new_X_odo = C_cox * (C_cox + C_odo).inverse() * X_odo;
@@ -235,10 +249,13 @@ void Kalman(void){
 		
 		MatrixXd new_X = new_X_odo + new_X_cox;
 		
+		
+		
+		//cout << "Inverse calculation: " << (C_cox.inverse() + C_odo.inverse()).determinant() << endl;
 		// Calculate New C
 		Eigen::MatrixXd new_C;
 		new_C = (C_cox.inverse() + C_odo.inverse()).inverse();
-		cout<<"finish calculation"<<endl;
+		//cout<<"finish calculation"<<endl;
 		
 		// Store current corrected position and covariance matrix 
 		x = new_X(0, 0);
@@ -247,15 +264,15 @@ void Kalman(void){
 		
 		p = new_C;
 		
-		cout << "X: " << x << endl;
-		cout << "Y: " << y << endl;
-		cout << "A: " << ((a) * 180 / M_PI)<< endl;
+		//cout << "X: " << x << endl;
+		//cout << "Y: " << y << endl;
+		//cout << "A: " << ((a) * 180 / M_PI)<< endl;
 		//cout << "Started writing to kalman"<< endl;
-		//kalman_file << Local_Time() << " " << new_X(0, 0) << " " << new_X(1, 0) << " " << new_X(2, 0) << " ";
-		//kalman_file << new_C(0,0) << " " << new_C(0,1) << " " << new_C(0,2) << " ";
-		//kalman_file << new_C(1,0) << " " << new_C(1,1) << " " << new_C(1,2) << " ";
-		//kalman_file << new_C(2,0) << " " << new_C(2,1) << " " << new_C(2,2) << " " << " \n";
-		
+		kalman_file << Local_Time() << " " << new_X(0, 0) << " " << new_X(1, 0) << " " << new_X(2, 0) << " ";
+		kalman_file << new_C(0,0) << " " << new_C(0,1) << " " << new_C(0,2) << " ";
+		kalman_file << new_C(1,0) << " " << new_C(1,1) << " " << new_C(1,2) << " ";
+		kalman_file << new_C(2,0) << " " << new_C(2,1) << " " << new_C(2,2) << " " << " \n";
+		kalman_file.flush();
 		//cout << "ended writing to kalman"<< endl;
 	
 	}
@@ -321,15 +338,15 @@ void backward()
 
 void left()
 {
-	MotorData.Set_Speed_M1 = SPEED;
-	MotorData.Set_Speed_M2 = -SPEED;
+	MotorData.Set_Speed_M1 = 500;
+	MotorData.Set_Speed_M2 = -500;
 
 }
 
 void right()
 {
-	MotorData.Set_Speed_M1 = -SPEED;
-	MotorData.Set_Speed_M2 = SPEED;
+	MotorData.Set_Speed_M1 = -500;
+	MotorData.Set_Speed_M2 = 500;
 
 }
 
@@ -367,119 +384,89 @@ void *Pos_Controller(void* ){
 	E_left_old = MotorData.Encoder_M2;
 	
 	//odo_file.open("odometery_readings.txt", ios::trunc);
-	//kalman_file.open("kalman_readings.txt", ios::trunc);
-	/*
+	//kalman_file.open("kalman_readings.txt", ios::out | ios::trunc);
+	
+	odo_file.close();
+    kalman_file.close();
+	
 	if(!odo_file.is_open())
 	{
-		cout << "Odometry readings txt file failed to open" << endl;
+		odo_file.open("odometery_readings.txt", ios::out |ios::trunc);
+		cout << "odo file opened" << endl;
+		//cout << "Odometry readings txt file failed to open" << endl;
 		//return;
+	}
+	else
+	{
+		cout << "odo file is already open" << endl;
 	}
 	  
 	if(!kalman_file.is_open())
 	{
-		cout << "kalman readings txt file failed to open" << endl;
+		kalman_file.open("kalman_readings.txt", ios::out | ios::trunc);
+		cout << "kalman file opened" << endl;
+		//cout << "kalman readings txt file failed to open" << endl;
 		//return;
 	}  
-	*/
-	//odo_file << "Time[s] X[mm] Y[mm] a[rad] c11 c12 c13 c21 c22 c23 c31 c32 c33 \n"; 
-	//kalman_file << "Time[s] X[mm] Y[mm] a[rad] c11 c12 c13 c21 c22 c23 c31 c32 c33 \n"; 
+	else
+	{
+		cout << "Kalman file is already open" << endl;
+	}
+	
+	odo_file << "Time[s] X[mm] Y[mm] a[rad] c11 c12 c13 c21 c22 c23 c31 c32 c33 \n"; 
+	kalman_file << "Time[s] X[mm] Y[mm] a[rad] c11 c12 c13 c21 c22 c23 c31 c32 c33 \n"; 
+	odo_file.flush();
+	kalman_file.flush();
 	  
 	
 	while(1){
 		
-		//cout << "Time: " <<  Local_Time()<< endl;
-		//forward();
-		//delay(50);
-		//Send_Read_Motor_Data(&MotorData);
-		//E_left = MotorData.Encoder_M2;
-		//cout << " E_new: "<< static_cast<int>(E_left) << endl;
-		/*
+		
 		switch(state)
 		{
-			case 1:
+			case 1: // Start state
 			forward();
 			Counter_walk++;
-			if(Counter_walk > 200)
+			if(Counter_walk > 300)
 			{
 				state = 2;
 				Counter_walk = 0;
 			}
 			break;
-			case 2:
-			left();
-			if(d != 0)
-			state = 3;
-			break;
-			case 3:
-			if( d > 0)
+			case 2: // search for box
+			if(d < 0)
 			{left();}
 			if(d > 0)
 			{right();}
-			if(abs(d) < 15)
-			{state = 4;}
+			if(abs(d) < 70)
+			{state = 3;}
 			break;
-			case 4:
-			if( (dArea/1000000) > 20)
-			{forward();}
-			else
-			{
-				if(box_N == 1)
-				{state = 5;}
-				else
-				{state = 6;}
-			}
-			break;
-			case 5:
-			if((dArea/1000000) > 2)
-			{forward();}
-			else
-			{state = 7;}
-			break;
-			case 6:
-			left();
-			Counter_walk++;
-			if(Counter_walk > 30)
-			{
-				
-				forward();
-			}
-			else if(Counter_walk > 60)
-			{
-				state = 2;
-				Counter_walk = 0;
-			}
-			break;
-			case 7:
-			if(got_box == 0)
-			{
-				state = 2;
-				got_box = 1;
-			}
-			else
-			{ state = 8;}
-			break;
-			case 8:
-			xe_new_location = 1200 - x;
-			ye_new_location = 380 - y;
-			heading_new_location  = atan2(xe_new_location, ye_new_location);
-			if( abs(heading_new_location) > 20)
-			{
-				left();
-			}
-			else if( abs(xe_new_location) > 10 && abs(ye_new_location) > 10)
+			case 3: // move toward box
+			if(box_area < 50000 && abs(d) > 0)
 			{
 				forward();
+				Counter_walk++;
+				if(Counter_walk > 20)
+				{
+					state = 2;
+					Counter_walk = 0;
+					stop();
+				}
 			}
-			else
-			{state = 9;}
-			break;	
+			else 
+			{
+				stop();
+			}
+			break;
 		}
+		cout << "d: " << d << endl;
+		cout << "State: " << state << endl;
 		delay(50);
-		//std::this_thread::sleep_for(std::chrono::milliseconds(50));
 		Send_Read_Motor_Data(&MotorData);
 		odometry();
 		Kalman();
-		*/
+		
+		/*
 		
 		if(Counter_walk < 500)
 		{  
@@ -499,8 +486,11 @@ void *Pos_Controller(void* ){
 			stop();
 			Send_Read_Motor_Data(&MotorData);
 			delay(50);
-		}	
+		}
+		*/	
 	}
+	
+	
 	
 }
 
