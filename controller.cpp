@@ -87,16 +87,7 @@ ofstream odo_file("odometery_readings.txt");
 ofstream kalman_file("kalman_readings.txt");
 
 int state = 1;
-/*
- *  1 --> Start
- *  2 --> search for the box
- *  3 --> move closer to box
- *  4 --> Box is one
- *  5 --> Box is zero 
- * 	6 --> got 1st box
- * 	7 --> go home(got 2nd box)
- * 
-*/
+int case6_direction = 0;
 void odometry(void){
 	
 	// Read current encoder values
@@ -131,7 +122,7 @@ void odometry(void){
 	
 	x = x_old + dx;
 	y = y_old + dy;
-	a = (a_old + dA);
+	a = fmod((a_old + dA), 2 * M_PI);
 	
 	// Predict the uncertainty in the state variables
 	
@@ -260,13 +251,13 @@ void Kalman(void){
 		// Store current corrected position and covariance matrix 
 		x = new_X(0, 0);
 		y = new_X(1, 0);
-		a = new_X(2, 0);
+		a =  fmod(new_X(2, 0), 2 * M_PI);
 		
 		p = new_C;
 		
-		//cout << "X: " << x << endl;
-		//cout << "Y: " << y << endl;
-		//cout << "A: " << ((a) * 180 / M_PI)<< endl;
+		cout << "X: " << x << endl;
+		cout << "Y: " << y << endl;
+		cout << "A: " << ((a) * 180 / M_PI)<< endl;
 		//cout << "Started writing to kalman"<< endl;
 		kalman_file << Local_Time() << " " << new_X(0, 0) << " " << new_X(1, 0) << " " << new_X(2, 0) << " ";
 		kalman_file << new_C(0,0) << " " << new_C(0,1) << " " << new_C(0,2) << " ";
@@ -417,11 +408,15 @@ void *Pos_Controller(void* ){
 	kalman_file << "Time[s] X[mm] Y[mm] a[rad] c11 c12 c13 c21 c22 c23 c31 c32 c33 \n"; 
 	odo_file.flush();
 	kalman_file.flush();
-	  
+	double angle_deg;
 	
 	while(1){
 		
 		
+		Send_Read_Motor_Data(&MotorData);
+		odometry();
+		Kalman();
+		delay(50);
 		switch(state)
 		{
 			case 1: // Start state
@@ -429,18 +424,19 @@ void *Pos_Controller(void* ){
 			Counter_walk++;
 			if(Counter_walk > 300)
 			{
-				state = 2;
+				state = 7;
 				Counter_walk = 0;
 			}
 			break;
-			case 2:
+			case 2: // check the box if it is one or zero
+			stop();
 			if(box_N == 1)
 			{
 				state = 3;
 			}
 			else
 			{
-				state = 4;
+				state = 7;
 			}
 			break;
 			case 3: // Turn toward the box if box = 1
@@ -448,22 +444,27 @@ void *Pos_Controller(void* ){
 			{left(500);}
 			if(d > 0)
 			{right(500);}
-			if(abs(d) < 70)
+			if(abs(d) < 80)
 			{state = 5;}
 			break;
 			case 4: // turn away from box if box = 0
 			if(d > 0)
-			{left(700);}
+			{left(2000);}
 			if(d < 0)
-			{right(700);}
-			if(abs(d) > 120)
+			{right(2000);}
+			if(abs(d) > 120 || box_N == 1)
 			{
 				//stop();
 				state = 2;
 			}
+			if(d == 0)
+			{
+				state = 2;
+			}
 			break;
 			case 5: // move toward box
-			if(box_area < 50000 && abs(d) > 0)
+			if(box_area > 3000 && abs(d) > 0)
+			//if(abs(d) > 0)
 			{
 				forward();
 				Counter_walk++;
@@ -471,47 +472,101 @@ void *Pos_Controller(void* ){
 				{
 					state = 2;
 					Counter_walk = 0;
-					stop();
+					//stop();
 				}
 			}
 			else 
 			{
 				//stop();
+				//forward();
+				//Counter_walk++;
+				forward();
 				Counter_walk++;
-				if(Counter_walk > 60)
+				if(Counter_walk > 50)
 				{
-					Counter_walk = 0;
+					
 					stop();
 					if(got_box == 0) // got the first box
 					{
 						stop();
 						got_box = 1;
-						state = 6;
+						state = 7;
 					}
 					else
 					{
-						stop();
+						state = 8;
+						cout<< "Got box 2" << endl;
+						//stop();
 					}
+					
 				}
+				
+				
+				
 			}
 			break;
-			case 6: // Search for second box 
-			if (abs(d) == 0)
+			case 6: // prepare for seaching for second box 
+			forward();
+			Counter_walk++;
+			if(Counter_walk > 100)
 			{
-				right(800);
+				state = 7;
+				Counter_walk = 0;
+			}
+			break;
+			case 7:
+			cout << "entered case 7" << endl;
+			angle_deg = ((a) * 180 / M_PI);
+			if(abs(d) == 0 || box_N == 0)
+			{
+				if(angle_deg > 90)
+				{
+					left(3000);
+				}
+				else if (angle_deg < 90)
+				{
+					right(3000);
+				}
 			}
 			else
 			{
 				state = 2;
 			}
+			//stop();
+			break;
+			
+			case 8: 
+			stop();
+			xe_new_location = 1200 - x;
+			ye_new_location = 380 - y;
+			heading_new_location  = atan2(xe_new_location, ye_new_location);
+			heading_new_location = ((heading_new_location) * 180 / M_PI);
+			cout << "xe_new_location" << xe_new_location << endl;
+			cout << "ye_new_location: " << ye_new_location << endl;
+			cout << "heading_new_location" << (heading_new_location )<< endl;
+			/*
+			if(abs(heading_new_location) > 10 )
+			{
+				left(3000);
+			}
+			else if (abs(ye_new_location) > 10)
+			{
+				forward();
+			}
+			else
+			{
+				stop();
+			}
+			*/
+			break;
 			
 		}
 		cout << "d: " << d << endl;
 		cout << "State: " << state << endl;
-		delay(50);
-		Send_Read_Motor_Data(&MotorData);
-		odometry();
-		Kalman();
+		//delay(50);
+		//Send_Read_Motor_Data(&MotorData);
+		//odometry();
+		//Kalman();
 		
 		/*
 		
