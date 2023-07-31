@@ -441,9 +441,9 @@ void *Pos_Controller(void* ){
 			break;
 			case 3: // Turn toward the box if box = 1
 			if(d < 0)
-			{left(500);}
+			{left(700);}
 			if(d > 0)
-			{right(500);}
+			{right(700);}
 			if(abs(d) < 80)
 			{state = 5;}
 			break;
@@ -468,7 +468,7 @@ void *Pos_Controller(void* ){
 			{
 				forward();
 				Counter_walk++;
-				if(Counter_walk > 20)
+				if(Counter_walk > 30)
 				{
 					state = 2;
 					Counter_walk = 0;
@@ -501,8 +501,6 @@ void *Pos_Controller(void* ){
 					
 				}
 				
-				
-				
 			}
 			break;
 			case 6: // prepare for seaching for second box 
@@ -521,11 +519,13 @@ void *Pos_Controller(void* ){
 			{
 				if(angle_deg > 90)
 				{
-					left(3000);
+					left(2000);
+					//right(3000);
 				}
 				else if (angle_deg < 90)
 				{
-					right(3000);
+					right(2000);
+					//left(3000);
 				}
 			}
 			else
@@ -539,11 +539,44 @@ void *Pos_Controller(void* ){
 			stop();
 			xe_new_location = 1200 - x;
 			ye_new_location = 380 - y;
-			heading_new_location  = atan2(xe_new_location, ye_new_location);
+			//heading_new_location  = atan2(xe_new_location, ye_new_location);
+			heading_new_location  = atan2(ye_new_location, xe_new_location);
 			heading_new_location = ((heading_new_location) * 180 / M_PI);
+			angle_deg = ((a) * 180 / M_PI);
+			if(abs(heading_new_location - angle_deg) > 10)
+			{
+				if(angle_deg > 90)
+				{
+					left(3000);
+					//right(3000);
+				}
+				else if (angle_deg < 90)
+				{
+					right(3000);
+					//left(3000);
+				}
+			
+			}
+			else
+			{
+				state = 9;
+			}
+			break;
 			cout << "xe_new_location" << xe_new_location << endl;
 			cout << "ye_new_location: " << ye_new_location << endl;
 			cout << "heading_new_location" << (heading_new_location )<< endl;
+			
+			case 9:
+			ye_new_location = 380 - y;
+			if(ye_new_location < 0)
+			{
+				forward();
+			}
+			else
+			{
+				stop();
+			}
+				
 			/*
 			if(abs(heading_new_location) > 10 )
 			{
