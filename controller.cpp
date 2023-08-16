@@ -46,6 +46,7 @@ double sigma_r = sigma_wheel_encoder;
 double xe_new_location;
 double ye_new_location;
 double heading_new_location;
+double angle_diff;
 
 // intial position 
 //int x_initial = 1200;
@@ -88,6 +89,7 @@ ofstream kalman_file("kalman_readings.txt");
 
 int state = 1;
 int case6_direction = 0;
+int kalman_flag = 0;
 void odometry(void){
 	
 	// Read current encoder values
@@ -177,8 +179,8 @@ void Kalman(void){
 	
 	if(cox_complete == 1)
 	{
-		//cout<<"enter Kalman"<<endl;
-		
+		cout<<"enter Kalman"<<endl;
+		kalman_flag = 0;
 		// Covariance Matrices
 		MatrixXd C_cox(3,3);
 		MatrixXd C_odo(3,3);
@@ -265,8 +267,11 @@ void Kalman(void){
 		kalman_file << new_C(2,0) << " " << new_C(2,1) << " " << new_C(2,2) << " " << " \n";
 		kalman_file.flush();
 		//cout << "ended writing to kalman"<< endl;
+		kalman_flag = 1;
+		cout << "Kalman Flag=  " << kalman_flag << endl;
 	
 	}
+	
 }
 
 void SPI_Robot(void){
@@ -422,9 +427,9 @@ void *Pos_Controller(void* ){
 			case 1: // Start state
 			forward();
 			Counter_walk++;
-			if(Counter_walk > 300)
+			if(Counter_walk > 200)
 			{
-				state = 7;
+				state = 2;
 				Counter_walk = 0;
 			}
 			break;
@@ -468,7 +473,7 @@ void *Pos_Controller(void* ){
 			{
 				forward();
 				Counter_walk++;
-				if(Counter_walk > 30)
+				if(Counter_walk > 50)
 				{
 					state = 2;
 					Counter_walk = 0;
@@ -490,7 +495,7 @@ void *Pos_Controller(void* ){
 					{
 						stop();
 						got_box = 1;
-						state = 7;
+						state = 6;
 					}
 					else
 					{
@@ -506,10 +511,19 @@ void *Pos_Controller(void* ){
 			case 6: // prepare for seaching for second box 
 			forward();
 			Counter_walk++;
-			if(Counter_walk > 100)
+			if(Counter_walk > 500)
 			{
+				angle_deg = ((a) * 180 / M_PI);
+				cout << "Current angle: " << angle_deg;
+				if(angle_deg > -270)
+				{
+					right(3000);
+				}
+				else
+				{	
 				state = 7;
 				Counter_walk = 0;
+				}
 			}
 			break;
 			case 7:
@@ -517,14 +531,14 @@ void *Pos_Controller(void* ){
 			angle_deg = ((a) * 180 / M_PI);
 			if(abs(d) == 0 || box_N == 0)
 			{
-				if(angle_deg > 90)
+				if(angle_deg >= 90)
 				{
-					left(2000);
+					left(1000);
 					//right(3000);
 				}
 				else if (angle_deg < 90)
 				{
-					right(2000);
+					right(1000);
 					//left(3000);
 				}
 			}
@@ -537,40 +551,48 @@ void *Pos_Controller(void* ){
 			
 			case 8: 
 			stop();
-			xe_new_location = 1200 - x;
-			ye_new_location = 380 - y;
-			//heading_new_location  = atan2(xe_new_location, ye_new_location);
-			heading_new_location  = atan2(ye_new_location, xe_new_location);
-			heading_new_location = ((heading_new_location) * 180 / M_PI);
-			angle_deg = ((a) * 180 / M_PI);
-			if(abs(heading_new_location - angle_deg) > 10)
+			if(kalman_flag == 1)
 			{
-				if(angle_deg > 90)
+				xe_new_location = 1200 - x;
+				ye_new_location = 380 - y;
+				//heading_new_location  = atan2(xe_new_location, ye_new_location);
+				heading_new_location  = atan2(ye_new_location, xe_new_location);
+				heading_new_location = ((heading_new_location) * 180 / M_PI);
+				angle_deg = ((a) * 180 / M_PI);
+				angle_diff = heading_new_location - angle_deg - 100;
+				angle_diff = fmod(angle_diff + 180, 360) - 180;
+				if(angle_diff > 5)
 				{
 					left(3000);
-					//right(3000);
 				}
-				else if (angle_deg < 90)
+				else if(angle_diff < -5)
 				{
 					right(3000);
-					//left(3000);
 				}
+				else
+				{
+					state = 9;
+				}
+				cout << "xe_new_location" << xe_new_location << endl;
+				cout << "ye_new_location: " << ye_new_location << endl;
+				cout << "angle_deg" << (angle_deg)<< endl;
+				cout << "angle_diff" << (angle_diff)<< endl;
+			}
 			
-			}
-			else
-			{
-				state = 9;
-			}
 			break;
-			cout << "xe_new_location" << xe_new_location << endl;
-			cout << "ye_new_location: " << ye_new_location << endl;
-			cout << "heading_new_location" << (heading_new_location )<< endl;
 			
 			case 9:
 			ye_new_location = 380 - y;
+			cout << "ye_new_location" << ye_new_location << endl;
 			if(ye_new_location < 0)
 			{
 				forward();
+				Counter_walk++;
+				if(Counter_walk > 100)
+				{
+					state = 8;
+					Counter_walk = 0;
+				}
 			}
 			else
 			{
