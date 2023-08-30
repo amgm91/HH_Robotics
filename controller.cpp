@@ -47,13 +47,18 @@ double xe_new_location;
 double ye_new_location;
 double heading_new_location;
 double angle_diff;
+double offset_x;
+double offset_y;
 
 // intial position 
 //int x_initial = 1200;
 //int y_initial = 250;
 //int a_initial = (90 * M_PI) / 180;
-double x_initial = 1200;
-double y_initial = 380;
+//double x_initial = 1200;
+//double y_initial = 380;
+
+double x_initial = 1170;
+double y_initial = 390;
 double a_initial = (90 * M_PI) / 180;
 MatrixXd p_initial(3,3);
 
@@ -87,10 +92,14 @@ double E_left;
 ofstream odo_file("odometery_readings.txt");
 ofstream kalman_file("kalman_readings.txt");
 
-int state = 1;
-int case6_direction = 0;
+int state = 6;
+int csase6_direction = 0;
 int kalman_flag = 0;
+int box_area_con = 3000;
+
 void odometry(void){
+	
+	
 	
 	// Read current encoder values
 	E_right = MotorData.Encoder_M1;
@@ -101,16 +110,18 @@ void odometry(void){
 	double dDr = (E_right - E_right_old) * mm_per_pulse;
 	double dDl = (E_left - E_left_old) * mm_per_pulse;
 	
+	
 	// save the current encoder readings as old readings to be used in the next iteration
 	E_right_old = E_right;
 	E_left_old = E_left;
 	
+	/*
 	// Make sure that the change in distance on both sides is not big because of the reset in encoder values
-	if(abs(dDr) > 20 || abs(dDl) > 20)
+	if(abs(dDr) > 10 || abs(dDl) > 10)
 	{
 		return;
 	}
-	
+	*/
 	
 	// Calculate change of relative movements
 	double dD = (dDr + dDl) / 2;
@@ -120,11 +131,17 @@ void odometry(void){
 	double dx = dD * cos(a_old + dA/2);
 	double dy = dD * sin(a_old + dA/2);
 	
+	//cout << "dx = " << dx <<endl;
+	//cout << "dy = " << dy <<endl;
+	//cout << "da/2 = " << ( dA/2 * M_PI /180) << endl;
+	
 	// Calculate new X, Y, A
 	
 	x = x_old + dx;
 	y = y_old + dy;
-	a = fmod((a_old + dA), 2 * M_PI);
+	a = fmod((a_old + dA + (2 * M_PI)), 2 * M_PI);
+	
+	// (2 * M_PI) was added to ensure that the anglle is always in the range 0 - 360 and not negative
 	
 	// Predict the uncertainty in the state variables
 	
@@ -155,32 +172,38 @@ void odometry(void){
 	
 	p = Cxya_new;
 	
-	// Print the Values
-	
-	//cout << "X: " << x << endl;
-	//cout << "Y: " << y << endl;
-	//cout << "A: " << (a * 180 / M_PI)  << endl;
-	//cout << "P:  "  << p << endl;
-	
-	odo_file << Local_Time() << " " << x << " " << y << " " << a << " ";
-	odo_file << p(0,0) << " " << p(0,1) << " " << p(0,2) << " ";
-	odo_file << p(1,0) << " " << p(1,1) << " " << p(1,2) << " ";
-	odo_file << p(2,0) << " " << p(2,1) << " " << p(2,2) << " " << " \n";
-	odo_file.flush();
-	
 	// save the current as the old point for the next iteration
 	x_old = x;
 	y_old = y;
 	a_old = a;
 	p_old = p;
+
+	
+	// Print the Values
+	
+	cout << "Odometry Reading" << endl;
+	cout << "X: " << x << endl;
+	cout << "Y: " << y << endl;
+	cout << "A: " << (a * 180 / M_PI)  << endl;
+	//cout << "P:  "  << p << endl;
+	
+	odo_file << Local_Time() << " " << x << " " << y << " " << (a* 180 / M_PI) << " "<< " \n";
+	//odo_file << Local_Time() << " " << x << " " << y << " " << a << " ";
+	//odo_file << p(0,0) << " " << p(0,1) << " " << p(0,2) << " ";
+	//odo_file << p(1,0) << " " << p(1,1) << " " << p(1,2) << " ";
+	//odo_file << p(2,0) << " " << p(2,1) << " " << p(2,2) << " " << " \n";
+	odo_file.flush();
+	
+	
 }
 
 void Kalman(void){
 	
+	kalman_flag = 0;
 	if(cox_complete == 1)
 	{
 		cout<<"enter Kalman"<<endl;
-		kalman_flag = 0;
+		
 		// Covariance Matrices
 		MatrixXd C_cox(3,3);
 		MatrixXd C_odo(3,3);
@@ -206,7 +229,7 @@ void Kalman(void){
 		
 		if(abs((C_cox + C_odo).determinant()) == 0)
 		{
-			// the matrix is invertible;
+			// the matrix is not invertible;
 			cout<<"Matrix is not invertable"<<endl;
 			return;
 		}
@@ -248,30 +271,97 @@ void Kalman(void){
 		// Calculate New C
 		Eigen::MatrixXd new_C;
 		new_C = (C_cox.inverse() + C_odo.inverse()).inverse();
+		
+		// this line to insure that each cox calculation is used once for kalman
+		cox_complete = 0;
+		
 		//cout<<"finish calculation"<<endl;
+		/*
+		if((abs(fmod(new_X(2, 0), 2 * M_PI) - a_old) * 180 / M_PI) > 10)
+		{
+			cout << "BIG ANGLE CHANGE KALMAN" << endl;
+			kalman_file << Local_Time() << " " << (new_X(0, 0) - x_old) << " " << (new_X(1, 0) - y_old)  << " " << ((fmod(new_X(2, 0), 2 * M_PI) - a_old) * 180 / M_PI) << " ";
+			kalman_file << new_C(0,0) << " " << new_C(0,1) << " " << new_C(0,2) << " ";
+			kalman_file << new_C(1,0) << " " << new_C(1,1) << " " << new_C(1,2) << " ";
+			kalman_file << new_C(2,0) << " " << new_C(2,1) << " " << new_C(2,2) << "            " << "BIG ANGLE CHANGE KALMAN"<< " \n";
+		
+			return;
+		}
+		*/
+		
+		int kalman_x_flag = 1;
+		int kalman_y_flag = 1;
+		
+		if( abs(new_X(0, 0) - x_old) > 150)
+		{
+			kalman_x_flag = 0;
+			cout << "BIG X CHANGE KALMAN" << endl;
+			kalman_file << Local_Time() << " " << (new_X(0, 0) - x_old) << " " << (new_X(1, 0) - y_old)  << " " << ((fmod(new_X(2, 0), 2 * M_PI) - a_old) * 180 / M_PI) << " "<< "BIG X CHANGE KALMAN"<< " \n";
+			//kalman_file << new_C(0,0) << " " << new_C(0,1) << " " << new_C(0,2) << " ";
+			//kalman_file << new_C(1,0) << " " << new_C(1,1) << " " << new_C(1,2) << " ";
+			//kalman_file << new_C(2,0) << " " << new_C(2,1) << " " << new_C(2,2) << "            " << "BIG ANGLE CHANGE KALMAN"<< " \n";
+		
+			//return;
+		}
+		
+		
+		if( abs(new_X(1, 0) - y_old) > 150)
+		{
+			kalman_y_flag = 0;
+			cout << "BIG Y CHANGE KALMAN" << endl;
+			kalman_file << Local_Time() << " " << (new_X(0, 0) - x_old) << " " << (new_X(1, 0) - y_old)  << " " << ((fmod(new_X(2, 0), 2 * M_PI) - a_old) * 180 / M_PI) << " "<< "BIG Y CHANGE KALMAN"<< " \n";
+			//kalman_file << new_C(0,0) << " " << new_C(0,1) << " " << new_C(0,2) << " ";
+			//kalman_file << new_C(1,0) << " " << new_C(1,1) << " " << new_C(1,2) << " ";
+			//kalman_file << new_C(2,0) << " " << new_C(2,1) << " " << new_C(2,2) << "            " << "BIG ANGLE CHANGE KALMAN"<< " \n";
+		
+			return;
+		}
+		
+		
 		
 		// Store current corrected position and covariance matrix 
-		x = new_X(0, 0);
-		y = new_X(1, 0);
-		a =  fmod(new_X(2, 0), 2 * M_PI);
 		
+		if(kalman_x_flag)
+		{
+			x = new_X(0, 0);
+		}
+		
+		if(kalman_y_flag)
+		{
+			y = new_X(1, 0);
+		}
+		
+		
+		double old_kal_a = a;
+		a = fmod(new_X(2, 0), 2 * M_PI);
+		cout << "Kalman x diffrence= " << (x - x_old) << endl;
+		cout << "Kalman y diffrence= " << (y - y_old) << endl;
+		cout << "Kalman a diffrence= " << ((a - a_old) * 180 / M_PI) << endl;
 		p = new_C;
+		
+		
 		
 		cout << "X: " << x << endl;
 		cout << "Y: " << y << endl;
 		cout << "A: " << ((a) * 180 / M_PI)<< endl;
+		
 		//cout << "Started writing to kalman"<< endl;
-		kalman_file << Local_Time() << " " << new_X(0, 0) << " " << new_X(1, 0) << " " << new_X(2, 0) << " ";
-		kalman_file << new_C(0,0) << " " << new_C(0,1) << " " << new_C(0,2) << " ";
-		kalman_file << new_C(1,0) << " " << new_C(1,1) << " " << new_C(1,2) << " ";
-		kalman_file << new_C(2,0) << " " << new_C(2,1) << " " << new_C(2,2) << " " << " \n";
+		kalman_file << Local_Time() << " " << (x - x_old) << " " << (y - y_old)  << " " << ((a - a_old) * 180 / M_PI) << " " << " \n";
+		//kalman_file << Local_Time() << " " << new_X(0, 0) << " " << new_X(1, 0)  << " " << (new_X(2, 0) * 180 / M_PI) << " " << " \n";
+		//kalman_file << new_C(0,0) << " " << new_C(0,1) << " " << new_C(0,2) << " ";
+		//kalman_file << new_C(1,0) << " " << new_C(1,1) << " " << new_C(1,2) << " ";
+		//kalman_file << new_C(2,0) << " " << new_C(2,1) << " " << new_C(2,2) << " " << " \n";
 		kalman_file.flush();
 		//cout << "ended writing to kalman"<< endl;
 		kalman_flag = 1;
-		cout << "Kalman Flag=  " << kalman_flag << endl;
-	
+		
+		// save the current as the old point for the next odometry iteration
+		x_old = x;
+		y_old = y;
+		a_old = a;
+		p_old = p;
 	}
-	
+	cout << "Kalman Flag =  " << kalman_flag << endl;
 }
 
 void SPI_Robot(void){
@@ -361,6 +451,11 @@ void *Pos_Controller(void* ){
 	y_old = y_initial;
 	a_old = a_initial;
 	
+	x = x_initial;
+	y = y_initial;
+	a = a_initial;
+	
+	
 	wiringPiSetup();
 	//wiringPiSPISetup(1, 4000000);
 	wiringPiSPISetup(1, 1000000);
@@ -374,8 +469,6 @@ void *Pos_Controller(void* ){
 		delay(50);
 	}
 	
-	
-	
 	E_right_old = MotorData.Encoder_M1;
 	E_left_old = MotorData.Encoder_M2;
 	
@@ -387,7 +480,8 @@ void *Pos_Controller(void* ){
 	
 	if(!odo_file.is_open())
 	{
-		odo_file.open("odometery_readings.txt", ios::out |ios::trunc);
+		odo_file.open("odometery_readings.txt", std::ios::out | std::ios::trunc);
+		odo_file.tie(nullptr);
 		cout << "odo file opened" << endl;
 		//cout << "Odometry readings txt file failed to open" << endl;
 		//return;
@@ -400,6 +494,7 @@ void *Pos_Controller(void* ){
 	if(!kalman_file.is_open())
 	{
 		kalman_file.open("kalman_readings.txt", ios::out | ios::trunc);
+		kalman_file.tie(nullptr);
 		cout << "kalman file opened" << endl;
 		//cout << "kalman readings txt file failed to open" << endl;
 		//return;
@@ -414,6 +509,7 @@ void *Pos_Controller(void* ){
 	odo_file.flush();
 	kalman_file.flush();
 	double angle_deg;
+	int temp_counter = 0;
 	
 	while(1){
 		
@@ -427,9 +523,11 @@ void *Pos_Controller(void* ){
 			case 1: // Start state
 			forward();
 			Counter_walk++;
-			if(Counter_walk > 200)
+			//if(Counter_walk > 200)
+			if(Counter_walk > 300)
 			{
-				state = 2;
+				//state = 2;
+				state = 6;
 				Counter_walk = 0;
 			}
 			break;
@@ -468,9 +566,16 @@ void *Pos_Controller(void* ){
 			}
 			break;
 			case 5: // move toward box
-			if(box_area > 3000 && abs(d) > 0)
+			
+			//cout << "Box Area = " << box_area << endl;
+			//cout << "Box Area condition = " << box_area_con << endl;
+ 			if(box_area > box_area_con && abs(d) > 0)
 			//if(abs(d) > 0)
 			{
+				if(got_box == 1)
+				{
+					box_area_con += 400;
+				}
 				forward();
 				Counter_walk++;
 				if(Counter_walk > 50)
@@ -487,7 +592,7 @@ void *Pos_Controller(void* ){
 				//Counter_walk++;
 				forward();
 				Counter_walk++;
-				if(Counter_walk > 50)
+				if(Counter_walk > 100)
 				{
 					
 					stop();
@@ -495,7 +600,7 @@ void *Pos_Controller(void* ){
 					{
 						stop();
 						got_box = 1;
-						state = 6;
+						state = 8;
 					}
 					else
 					{
@@ -503,29 +608,32 @@ void *Pos_Controller(void* ){
 						cout<< "Got box 2" << endl;
 						//stop();
 					}
-					
 				}
-				
 			}
 			break;
+			
 			case 6: // prepare for seaching for second box 
 			forward();
 			Counter_walk++;
-			if(Counter_walk > 500)
+			if(Counter_walk > 120)
 			{
 				angle_deg = ((a) * 180 / M_PI);
-				cout << "Current angle: " << angle_deg;
-				if(angle_deg > -270)
+				cout << "Current angle: " << angle_deg << endl;
+				//if(angle_deg > -270)
+				if(angle_deg > 80 && angle_deg < 270)
 				{
-					right(3000);
+					//a = a - (3 * M_PI / 180);
+					left(1000);
 				}
 				else
 				{	
-				state = 7;
-				Counter_walk = 0;
+					//state = 7;
+					state = 10;
+					Counter_walk = 0;
 				}
 			}
 			break;
+			
 			case 7:
 			cout << "entered case 7" << endl;
 			angle_deg = ((a) * 180 / M_PI);
@@ -533,12 +641,12 @@ void *Pos_Controller(void* ){
 			{
 				if(angle_deg >= 90)
 				{
-					left(1000);
+					left(1500);
 					//right(3000);
 				}
 				else if (angle_deg < 90)
 				{
-					right(1000);
+					right(1500);
 					//left(3000);
 				}
 			}
@@ -551,23 +659,35 @@ void *Pos_Controller(void* ){
 			
 			case 8: 
 			stop();
-			if(kalman_flag == 1)
+			if(kalman_flag == 1 || temp_counter < 2)
+			//if(kalman_flag == 1)
 			{
+				cout << "Enter case 8" << endl;
+				temp_counter++;
+				if(kalman_flag == 1)
+				{
+					temp_counter = 0;
+				}
+				
 				xe_new_location = 1200 - x;
 				ye_new_location = 380 - y;
 				//heading_new_location  = atan2(xe_new_location, ye_new_location);
 				heading_new_location  = atan2(ye_new_location, xe_new_location);
 				heading_new_location = ((heading_new_location) * 180 / M_PI);
 				angle_deg = ((a) * 180 / M_PI);
-				angle_diff = heading_new_location - angle_deg - 100;
-				angle_diff = fmod(angle_diff + 180, 360) - 180;
-				if(angle_diff > 5)
+				angle_diff = heading_new_location - angle_deg;
+				
+				// change this part to make the angle between 180 and -180
+				//angle_diff = fmod(angle_diff + 180, 360) - 180;
+				if(angle_diff > 10)
 				{
 					left(3000);
+					//right(2000);
 				}
-				else if(angle_diff < -5)
+				else if(angle_diff < -10)
 				{
 					right(3000);
+					//left(2000);
 				}
 				else
 				{
@@ -575,20 +695,21 @@ void *Pos_Controller(void* ){
 				}
 				cout << "xe_new_location" << xe_new_location << endl;
 				cout << "ye_new_location: " << ye_new_location << endl;
-				cout << "angle_deg" << (angle_deg)<< endl;
-				cout << "angle_diff" << (angle_diff)<< endl;
+				cout << "angle_deg = " << (angle_deg)<< endl;
+				cout << "heading_new_location = " << (heading_new_location)<< endl;
+				cout << "angle_diff = " << (angle_diff)<< endl;
 			}
 			
 			break;
 			
 			case 9:
-			ye_new_location = 380 - y;
+			ye_new_location = 480 - y;
 			cout << "ye_new_location" << ye_new_location << endl;
 			if(ye_new_location < 0)
 			{
 				forward();
 				Counter_walk++;
-				if(Counter_walk > 100)
+				if(Counter_walk > 70)
 				{
 					state = 8;
 					Counter_walk = 0;
@@ -599,24 +720,14 @@ void *Pos_Controller(void* ){
 				stop();
 			}
 				
-			/*
-			if(abs(heading_new_location) > 10 )
-			{
-				left(3000);
-			}
-			else if (abs(ye_new_location) > 10)
-			{
-				forward();
-			}
-			else
-			{
-				stop();
-			}
-			*/
+			break;
+			
+			case 10:
+			stop();
 			break;
 			
 		}
-		cout << "d: " << d << endl;
+		//cout << "d: " << d << endl;
 		cout << "State: " << state << endl;
 		//delay(50);
 		//Send_Read_Motor_Data(&MotorData);

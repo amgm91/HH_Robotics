@@ -141,7 +141,7 @@ int *Camera_Client(void *)
 			box_N = -1;
 		}
 		
-		cout << "d: " << d << endl;
+		//cout << "d: " << d << endl;
 		
 		
 		vector<vector<Point> > contours;
@@ -164,7 +164,7 @@ int *Camera_Client(void *)
 				}
 			}
 			
-			cout << "Largest Contour Area: " << contourArea(contours[largestContourIndex]) << endl;
+			//cout << "Largest Contour Area: " << contourArea(contours[largestContourIndex]) << endl;
 			
 			box_area = contourArea(contours[largestContourIndex]);
 			
@@ -181,13 +181,13 @@ int *Camera_Client(void *)
 			if (contours2.size() > 1)
 			{
 				box_N = 0;
-				cout << "Detected Box : "<< box_N << endl; 
+				//cout << "Detected Box : "<< box_N << endl; 
 				
 			}
 			else
 			{
 				box_N = 1;
-				cout << "Detected Box : "<< box_N << endl; 
+				//cout << "Detected Box : "<< box_N << endl; 
 				
 			}
 			for (size_t i = 0; i < contours2.size(); i++) 

@@ -110,14 +110,10 @@ void *Lidar_Server(void *){
 		Received_Bytes = recv(newsockfd, recv_buffer, 5, 0);
 		if(recv_buffer[0] == 0xA5){
 			Received_Bytes = recv(newsockfd, recv_buffer, 5, 0);
-			if(scan_match_done == 1) {
-				Array_full_flag = 0;
-                                break;  
-			} 
 			iQuality = recv_buffer[0] >> 2;
 		    iAngle = (recv_buffer[1] >> 1) + (recv_buffer[2] << 8);
 			iDistance = (recv_buffer[3]) + (recv_buffer[4] << 8);  
-			if (scan_match_done == 0 && Array_full_flag == 0) { 
+			if (Array_full_flag == 0) { 
 			        // Take care of multipel times
 				if ((iQuality >10 ) && (iDistance != 0) ) {
 					// Todo for you! check quality and store data
@@ -127,7 +123,7 @@ void *Lidar_Server(void *){
 					ang(0, Counter) = -(((double)iAngle) * 0.000136353);
 					Counter++;
 					if(Counter == 400){
-						cout<<"400 Done"<<endl;
+						//cout<<"400 Done"<<endl;
 						Array_full_flag = 1;
 						//close(newsockfd);
 						//close(sockfd);
