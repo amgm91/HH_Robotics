@@ -59,7 +59,7 @@ double offset_y;
 
 double x_initial = 1210;
 double y_initial = 390;
-double a_initial = (90 * M_PI) / 180;
+double a_initial = (80 * M_PI) / 180;
 MatrixXd p_initial(3,3);
 
 // old position
@@ -97,7 +97,7 @@ float E_left;
 ofstream odo_file("odometery_readings.txt");
 ofstream kalman_file("kalman_readings.txt");
 
-int state = 6;
+int state = 1;
 int csase6_direction = 0;
 int kalman_flag = 0;
 int box_area_con = 3000;
@@ -281,21 +281,25 @@ void Kalman(void){
 		cox_complete = 0;
 		
 		//cout<<"finish calculation"<<endl;
-		/*
-		if((abs(fmod(new_X(2, 0), 2 * M_PI) - a_old) * 180 / M_PI) > 10)
-		{
-			cout << "BIG ANGLE CHANGE KALMAN" << endl;
-			kalman_file << Local_Time() << " " << (new_X(0, 0) - x_old) << " " << (new_X(1, 0) - y_old)  << " " << ((fmod(new_X(2, 0), 2 * M_PI) - a_old) * 180 / M_PI) << " ";
-			kalman_file << new_C(0,0) << " " << new_C(0,1) << " " << new_C(0,2) << " ";
-			kalman_file << new_C(1,0) << " " << new_C(1,1) << " " << new_C(1,2) << " ";
-			kalman_file << new_C(2,0) << " " << new_C(2,1) << " " << new_C(2,2) << "            " << "BIG ANGLE CHANGE KALMAN"<< " \n";
-		
-			return;
-		}
-		*/
 		
 		int kalman_x_flag = 1;
 		int kalman_y_flag = 1;
+		int kalman_a_flag = 1;
+		
+		if((abs(fmod(new_X(2, 0), 2 * M_PI) - a_old) * 180 / M_PI) > 20)
+		{
+			cout << "BIG ANGLE CHANGE KALMAN" << endl;
+			kalman_a_flag = 0;
+			kalman_file << Local_Time() << " " << (new_X(0, 0) - x_old) << " " << (new_X(1, 0) - y_old)  << " " << ((fmod(new_X(2, 0), 2 * M_PI) - a_old) * 180 / M_PI) << " " << "            " << "BIG ANGLE CHANGE KALMAN"<< " \n";
+			//kalman_file << new_C(0,0) << " " << new_C(0,1) << " " << new_C(0,2) << " ";
+			//kalman_file << new_C(1,0) << " " << new_C(1,1) << " " << new_C(1,2) << " ";
+			//kalman_file << new_C(2,0) << " " << new_C(2,1) << " " << new_C(2,2) << "            " << "BIG ANGLE CHANGE KALMAN"<< " \n";
+		
+			//return;
+		}
+		
+		
+		
 		
 		if( abs(new_X(0, 0) - x_old) > 150)
 		{
@@ -319,7 +323,7 @@ void Kalman(void){
 			//kalman_file << new_C(1,0) << " " << new_C(1,1) << " " << new_C(1,2) << " ";
 			//kalman_file << new_C(2,0) << " " << new_C(2,1) << " " << new_C(2,2) << "            " << "BIG ANGLE CHANGE KALMAN"<< " \n";
 		
-			return;
+			//return;
 		}
 		
 		
@@ -336,9 +340,15 @@ void Kalman(void){
 			y = new_X(1, 0);
 		}
 		
+		if(kalman_a_flag)
+		{
+			a = fmod(new_X(2, 0), 2 * M_PI);
+		}
 		
+		//x = new_X(0, 0);
+		//y = new_X(1, 0);
 		double old_kal_a = a;
-		a = fmod(new_X(2, 0), 2 * M_PI);
+		//a = fmod(new_X(2, 0), 2 * M_PI);
 		cout << "Kalman x diffrence= " << (x - x_old) << endl;
 		cout << "Kalman y diffrence= " << (y - y_old) << endl;
 		cout << "Kalman a diffrence= " << ((a - a_old) * 180 / M_PI) << endl;
@@ -522,17 +532,23 @@ void *Pos_Controller(void* ){
 		Send_Read_Motor_Data(&MotorData);
 		odometry();
 		Kalman();
-		delay(50);
+		/*
+		if(state < 8)
+		{
+			Kalman();
+		}
+		*/
+		delay(100);
 		switch(state)
 		{
 			case 1: // Start state
 			forward();
 			Counter_walk++;
-			//if(Counter_walk > 200)
-			if(Counter_walk > 300)
+			if(Counter_walk > 100)
+			//if(Counter_walk > 300)
 			{
-				//state = 2;
-				state = 6;
+				state = 2;
+				//state = 6;
 				Counter_walk = 0;
 			}
 			break;
@@ -549,9 +565,9 @@ void *Pos_Controller(void* ){
 			break;
 			case 3: // Turn toward the box if box = 1
 			if(d < 0)
-			{left(700);}
+			{left(450);}
 			if(d > 0)
-			{right(700);}
+			{right(450);}
 			if(abs(d) < 80)
 			{state = 5;}
 			break;
@@ -579,7 +595,7 @@ void *Pos_Controller(void* ){
 			{
 				if(got_box == 1)
 				{
-					box_area_con += 400;
+					box_area_con += 200;
 				}
 				forward();
 				Counter_walk++;
@@ -597,7 +613,7 @@ void *Pos_Controller(void* ){
 				//Counter_walk++;
 				forward();
 				Counter_walk++;
-				if(Counter_walk > 100)
+				if(Counter_walk > 50)
 				{
 					
 					stop();
@@ -605,7 +621,7 @@ void *Pos_Controller(void* ){
 					{
 						stop();
 						got_box = 1;
-						state = 8;
+						state = 6;
 					}
 					else
 					{
@@ -620,20 +636,20 @@ void *Pos_Controller(void* ){
 			case 6: // prepare for seaching for second box 
 			forward();
 			Counter_walk++;
-			if(Counter_walk > 120)
+			if(Counter_walk > 150)
 			{
 				angle_deg = ((a) * 180 / M_PI);
 				cout << "Current angle: " << angle_deg << endl;
 				//if(angle_deg > -270)
-				if(angle_deg > 80 && angle_deg < 270)
+				if(angle_deg < 180)
 				{
 					//a = a - (3 * M_PI / 180);
-					left(2000);
+					left(2500);
 				}
 				else
 				{	
-					//state = 7;
-					state = 10;
+					state = 7;
+					//state = 10;
 					Counter_walk = 0;
 				}
 			}
@@ -644,6 +660,8 @@ void *Pos_Controller(void* ){
 			angle_deg = ((a) * 180 / M_PI);
 			if(abs(d) == 0 || box_N == 0)
 			{
+				left(1500);
+				/*
 				if(angle_deg >= 90)
 				{
 					left(1500);
@@ -654,6 +672,7 @@ void *Pos_Controller(void* ){
 					right(1500);
 					//left(3000);
 				}
+				*/
 			}
 			else
 			{
@@ -664,34 +683,34 @@ void *Pos_Controller(void* ){
 			
 			case 8: 
 			stop();
-			if(kalman_flag == 1 || temp_counter < 2)
+			//if(kalman_flag == 1 || temp_counter < 2)
 			//if(kalman_flag == 1)
-			{
+			//{
 				cout << "Enter case 8" << endl;
-				temp_counter++;
+				//temp_counter++;
 				if(kalman_flag == 1)
 				{
-					temp_counter = 0;
+					//temp_counter = 0;
 				}
 				
 				xe_new_location = 1200 - x;
-				ye_new_location = 380 - y;
+				ye_new_location = 390 - y;
 				//heading_new_location  = atan2(xe_new_location, ye_new_location);
 				heading_new_location  = atan2(ye_new_location, xe_new_location);
 				heading_new_location = ((heading_new_location) * 180 / M_PI);
 				angle_deg = ((a) * 180 / M_PI);
 				angle_diff = heading_new_location - angle_deg;
-				
+				angle_diff = fmod(angle_diff + 360, 360);
 				// change this part to make the angle between 180 and -180
 				//angle_diff = fmod(angle_diff + 180, 360) - 180;
 				if(angle_diff > 10)
 				{
-					left(3000);
+					left(2000);
 					//right(2000);
 				}
 				else if(angle_diff < -10)
 				{
-					right(3000);
+					right(2000);
 					//left(2000);
 				}
 				else
@@ -703,18 +722,18 @@ void *Pos_Controller(void* ){
 				cout << "angle_deg = " << (angle_deg)<< endl;
 				cout << "heading_new_location = " << (heading_new_location)<< endl;
 				cout << "angle_diff = " << (angle_diff)<< endl;
-			}
+			//}
 			
 			break;
 			
 			case 9:
-			ye_new_location = 480 - y;
+			ye_new_location = 600 - y;
 			cout << "ye_new_location" << ye_new_location << endl;
 			if(ye_new_location < 0)
 			{
 				forward();
 				Counter_walk++;
-				if(Counter_walk > 70)
+				if(Counter_walk > 150)
 				{
 					state = 8;
 					Counter_walk = 0;
@@ -722,7 +741,7 @@ void *Pos_Controller(void* ){
 			}
 			else
 			{
-				stop();
+				state = 10;
 			}
 				
 			break;
