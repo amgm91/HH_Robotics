@@ -22,7 +22,7 @@
 #include "spi_com.h"
 #include "scan_match.h"
 
-#define SPEED 3000	
+#define SPEED 5000	
 
 
 using namespace std;
@@ -59,7 +59,7 @@ double offset_y;
 
 double x_initial = 1210;
 double y_initial = 390;
-double a_initial = (80 * M_PI) / 180;
+double a_initial = (90 * M_PI) / 180;
 MatrixXd p_initial(3,3);
 
 // old position
@@ -314,7 +314,7 @@ void Kalman(void){
 		}
 		
 		
-		if( abs(new_X(1, 0) - y_old) > 150)
+		if( abs(new_X(1, 0) - y_old) > 200)
 		{
 			kalman_y_flag = 0;
 			cout << "BIG Y CHANGE KALMAN" << endl;
@@ -544,7 +544,7 @@ void *Pos_Controller(void* ){
 			case 1: // Start state
 			forward();
 			Counter_walk++;
-			if(Counter_walk > 100)
+			if(Counter_walk > 150)
 			//if(Counter_walk > 300)
 			{
 				state = 2;
@@ -565,9 +565,9 @@ void *Pos_Controller(void* ){
 			break;
 			case 3: // Turn toward the box if box = 1
 			if(d < 0)
-			{left(450);}
+			{left(480);}
 			if(d > 0)
-			{right(450);}
+			{right(480);}
 			if(abs(d) < 80)
 			{state = 5;}
 			break;
@@ -613,7 +613,7 @@ void *Pos_Controller(void* ){
 				//Counter_walk++;
 				forward();
 				Counter_walk++;
-				if(Counter_walk > 50)
+				if(Counter_walk > 30)
 				{
 					
 					stop();
@@ -641,10 +641,10 @@ void *Pos_Controller(void* ){
 				angle_deg = ((a) * 180 / M_PI);
 				cout << "Current angle: " << angle_deg << endl;
 				//if(angle_deg > -270)
-				if(angle_deg < 180)
+				if(angle_deg < 190)
 				{
 					//a = a - (3 * M_PI / 180);
-					left(2500);
+					left(3000);
 				}
 				else
 				{	
@@ -660,7 +660,7 @@ void *Pos_Controller(void* ){
 			angle_deg = ((a) * 180 / M_PI);
 			if(abs(d) == 0 || box_N == 0)
 			{
-				left(1500);
+				left(1000);
 				/*
 				if(angle_deg >= 90)
 				{
@@ -688,12 +688,12 @@ void *Pos_Controller(void* ){
 			//{
 				cout << "Enter case 8" << endl;
 				//temp_counter++;
-				if(kalman_flag == 1)
-				{
+				//if(kalman_flag == 1)
+				//{
 					//temp_counter = 0;
-				}
+				//}
 				
-				xe_new_location = 1200 - x;
+				xe_new_location = 1000 - x;
 				ye_new_location = 390 - y;
 				//heading_new_location  = atan2(xe_new_location, ye_new_location);
 				heading_new_location  = atan2(ye_new_location, xe_new_location);
@@ -705,12 +705,12 @@ void *Pos_Controller(void* ){
 				//angle_diff = fmod(angle_diff + 180, 360) - 180;
 				if(angle_diff > 10)
 				{
-					left(2000);
+					left(3000);
 					//right(2000);
 				}
 				else if(angle_diff < -10)
 				{
-					right(2000);
+					right(3000);
 					//left(2000);
 				}
 				else
