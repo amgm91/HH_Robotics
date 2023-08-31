@@ -2,8 +2,7 @@
 #define SPI_COM_H
 
 #ifdef __cplusplus
-	extern "C" {
-
+    extern "C"{
 
 typedef struct{
 

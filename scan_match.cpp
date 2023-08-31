@@ -85,6 +85,7 @@ void cox(void){
 	Rx = x;
 	Ry = y;
 	Ra = a;
+	
 	int max_iterations = 400;
 	MatrixXd Zi (4,2);
 	Zi.col(0) = lines.col(2);
@@ -285,20 +286,6 @@ void cox(void){
 		ddx = ddx + B(0);
 		ddy = ddy + B(1);
 		dda = fmod(dda + B(2), 2 * M_PI);
-		
-		/*
-		if(abs(dda * 180 / M_PI) > 25)
-		{
-			cout << "BIG COX CHANGE" << endl;
-			cox_file << Local_Time() << " " << ddx << " " << ddy << " " <<  ((dda) * 180 / M_PI) << " ";
-			cox_file << c_cox(0,0) << " " << c_cox(0,1) << " " << c_cox(0,2) << " ";
-			cox_file << c_cox(1,0) << " " << c_cox(1,1) << " " << c_cox(1,2) << " ";
-			cox_file << c_cox(2,0) << " " << c_cox(2,1) << " " << c_cox(2,2) << "                 " << "BIG COX Angle CHANGE" << " \n";
-			Array_full_flag = 0;
-			break;
-		}
-		*/
-		
 		//dda = (dda + B(2));
 		//dda = -dda;
 		
@@ -309,11 +296,14 @@ void cox(void){
 		//x_cox = Rx + ddx;
 		//y_cox = Ry + ddy;
 		//a_cox = Ra - dda;
+		
 		if(c_cox.array().isNaN().any())
 		{
+			cox_file << Local_Time() << " " << ddx << " " << ddy << " " <<  ((dda) * 180 / M_PI) << " " << "      NAN"<< " \n";
 			Array_full_flag = 0;
 			break;
-		}	
+		}
+		
 		
 		if (sqrt(B(0) * B(0) + B(1) * B(1)) < 5 && fabs(B(2)) < 0.1 * M_PI / 180) 
 		{
@@ -321,14 +311,14 @@ void cox(void){
 			x_cox = Rx + ddx;
 			y_cox = Ry + ddy;
 			a_cox = Ra + dda;
-			cox_file << Local_Time() << " " << x_cox << " " << y_cox << " " << (a_cox * 180 / M_PI) << " " << " \n";
-			//cox_file << Local_Time() << " " << ddx << " " << ddy << " " <<  ((dda) * 180 / M_PI) << " ";
+			Array_full_flag = 0;
+			cox_complete = 1;
+			//cox_file << Local_Time() << " " << x_cox << " " << y_cox << " " << a_cox << " " << " \n";
+			cox_file << Local_Time() << " " << ddx << " " << ddy << " " <<  ((dda) * 180 / M_PI) << " " << " \n";
 			//cox_file << c_cox(0,0) << " " << c_cox(0,1) << " " << c_cox(0,2) << " ";
 			//cox_file << c_cox(1,0) << " " << c_cox(1,1) << " " << c_cox(1,2) << " ";
 			//cox_file << c_cox(2,0) << " " << c_cox(2,1) << " " << c_cox(2,2) << " " << " \n";
 			cox_file.flush();
-			Array_full_flag = 0;
-			cox_complete = 1;
 			//cout<< "X: "<< x_cox << endl;
 			//cout<< "Y: "<< y_cox << endl; 
 			//cout<< "Ra degree: "<<(Ra * 180 / M_PI) << endl; 
@@ -341,6 +331,25 @@ void cox(void){
 		}
 		
 	 }
+	 
+	 
+	    
+	/*
+	if(Array_full_flag == 0)
+	{
+		int i;
+		cout<<"Array started"<<endl;
+		for(i = 0;i<400;i++)
+		{
+			cout<<"Distance"<<dis(0, i)<<endl;
+			cout<<"angle"<<ang(0, i)<<endl;
+		
+		}
+		cout<<"Array ended "<< i <<endl;
+		//Array_full_flag = 0;
+		hello_flag == 0;
+	}
+	*/
 }
 
 
@@ -351,9 +360,7 @@ void *Scan_Match(void *){
 	
 	if(!cox_file.is_open())
 	{
-		cox_file.open("scan_match_readings.txt", std::ios::out | std::ios::trunc);
-		cox_file.tie(nullptr);
-		cox_file.rdbuf()->pubsetbuf(0,0);
+		cox_file.open("scan_match_readings.txt", ios::out |ios::trunc);
 		cout << "Cox File opened" << endl;
 		//return;
 	}
@@ -368,6 +375,5 @@ void *Scan_Match(void *){
 	while(1){
 		if(Array_full_flag == 1)
 		cox();
-		//cout << "Cox Complete: " << cox_complete << endl; 
 	}
 }

@@ -57,7 +57,7 @@ double offset_y;
 //double x_initial = 1200;
 //double y_initial = 380;
 
-double x_initial = 1170;
+double x_initial = 1210;
 double y_initial = 390;
 double a_initial = (90 * M_PI) / 180;
 MatrixXd p_initial(3,3);
@@ -83,10 +83,15 @@ MatrixXd p(3,3);
 // M1 --> Right wheel 
 // M2 --> Left wheel 
 
-double E_right_old;
-double E_left_old;
-double E_right;
-double E_left;
+//double E_right_old;
+//double E_left_old;
+//double E_right;
+//double E_left;
+
+float E_right_old;
+float E_left_old;
+float E_right;
+float E_left;
 
 // initilize files to write location data to
 ofstream odo_file("odometery_readings.txt");
@@ -451,9 +456,9 @@ void *Pos_Controller(void* ){
 	y_old = y_initial;
 	a_old = a_initial;
 	
-	x = x_initial;
-	y = y_initial;
-	a = a_initial;
+	//x = x_initial;
+	//y = y_initial;
+	//a = a_initial;
 	
 	
 	wiringPiSetup();
@@ -623,7 +628,7 @@ void *Pos_Controller(void* ){
 				if(angle_deg > 80 && angle_deg < 270)
 				{
 					//a = a - (3 * M_PI / 180);
-					left(1000);
+					left(2000);
 				}
 				else
 				{	
